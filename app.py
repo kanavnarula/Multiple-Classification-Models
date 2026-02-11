@@ -1,5 +1,5 @@
 """
-Mushroom Classification - Streamlit Web Application (Refactored)
+Mushroom Classification - Streamlit Web Application
 This app trains and evaluates multiple classification models on the Mushroom Classification dataset
 
 Architecture:
@@ -48,13 +48,13 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # Title
-st.title("🍄 Mushroom Classification - Multiple Models")
+st.title("Mushroom Classification - Multiple Models")
 st.markdown("### Compare Multiple Classification Models")
 st.markdown("---")
 
 # Sidebar
 with st.sidebar:
-    st.header("📁 Dataset Source")
+    st.header("Dataset Source")
     data_source = st.radio(
         "Choose Data Source",
         ["Default Dataset (Kaggle)", "Upload CSV File"],
@@ -63,7 +63,7 @@ with st.sidebar:
     
     uploaded_file = None
     if data_source == "Upload CSV File":
-        st.info("⚠️ Upload smaller datasets for better performance on free tier.")
+        st.info("Upload smaller datasets for better performance on free tier.")
         uploaded_file = st.file_uploader(
             "Upload CSV File",
             type=['csv'],
@@ -71,14 +71,14 @@ with st.sidebar:
         )
     
     st.markdown("---")
-    st.header("🤖 Model Selection")
+    st.header("Model Selection")
     model_choice = st.selectbox(
         "Choose Classification Model",
         ["Logistic Regression", "Decision Tree", "K-Nearest Neighbors", "Compare All Models"]
     )
     
     st.markdown("---")
-    st.header("⚙️ Configuration")
+    st.header("Configuration")
     test_size = st.slider("Test Set Size", 0.1, 0.4, 0.2, 0.05)
     random_state = st.number_input("Random State", 0, 100, 42)
     
@@ -98,7 +98,7 @@ with st.sidebar:
         weights = st.selectbox("Weights", ["uniform", "distance"], index=0)
     
     st.markdown("---")
-    st.header("ℹ️ About Dataset")
+    st.header("About Dataset")
     st.info("""
     **Mushroom Classification Dataset**
     - Source: UCI Repository (Kaggle)
@@ -120,20 +120,20 @@ def main():
                 df = load_uploaded_file(uploaded_file)
             
             if df is not None:
-                st.success("✅ CSV file uploaded and loaded successfully!")
+                st.success("CSV file uploaded and loaded successfully!")
             else:
-                st.warning("⚠️ Please upload a valid CSV file to proceed.")
+                st.warning("Please upload a valid CSV file to proceed.")
                 return
         else:
             st.info("👆 Please upload a CSV file from the sidebar to get started.")
             st.markdown("""
-            ### 📋 Expected CSV Format:
+            ### Expected CSV Format:
             - **First column:** Target variable (class labels)
             - **Remaining columns:** Features
             - All columns should contain categorical or numerical data
             - **Example:** Mushroom dataset has 23 columns (1 target + 22 features)
             
-            ### 💡 Tips:
+            ### Tips:
             - Ensure your CSV has headers
             - First column will be treated as the target variable
             - Missing values will be displayed in the overview
@@ -145,28 +145,28 @@ def main():
             df, path = load_kaggle_dataset()
         
         if df is None:
-            st.error("❌ Failed to load dataset. Please try again.")
+            st.error("Failed to load dataset. Please try again.")
             return
         
-        st.success("✅ Dataset loaded successfully from Kaggle!")
+        st.success("Dataset loaded successfully from Kaggle!")
     
     # Display dataset information
     display_dataset_info(df)
     
     # Show dataset preview
-    with st.expander("📊 View Dataset Preview"):
+    with st.expander("View Dataset Preview"):
         st.dataframe(df.head(10), use_container_width=True)
     
     # Class distribution
-    with st.expander("📈 Class Distribution"):
+    with st.expander("Class Distribution"):
         fig = plot_class_distribution(df)
         st.pyplot(fig)
     
     st.markdown("---")
     
     # Train model button
-    button_text = f"🚀 Train {model_choice}" if model_choice != "Compare All Models" else "🚀 Train All Models"
-    
+    button_text = f"Train {model_choice}" if model_choice != "Compare All Models" else "Train All Models"
+
     if st.button(button_text, type="primary", use_container_width=True):
         
         if model_choice == "Logistic Regression":
@@ -191,17 +191,17 @@ def main():
                 with col1:
                     with st.spinner("Training Logistic Regression..."):
                         lr_results = train_logistic_regression(df, test_size, random_state, max_iter)
-                    st.success("✅ Logistic Regression Done")
-                
+                    st.success("Logistic Regression Done")
+
                 with col2:
                     with st.spinner("Training Decision Tree..."):
                         dt_results = train_decision_tree(df, test_size, random_state, max_depth, min_samples_split)
-                    st.success("✅ Decision Tree Done")
+                    st.success("Decision Tree Done")
                 
                 with col3:
                     with st.spinner("Training KNN..."):
                         knn_results = train_knn(df, test_size, random_state, n_neighbors, weights)
-                    st.success("✅ KNN Done")
+                    st.success("KNN Done")
             
             display_comparison_results(lr_results, dt_results, knn_results)
 

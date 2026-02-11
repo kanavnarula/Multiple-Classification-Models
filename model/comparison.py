@@ -197,9 +197,9 @@ def display_comparison_results(lr_results, dt_results, knn_results=None):
             winner_score = lr_score
     
     if winner != "Tie":
-        st.success(f"🏆 **Winner: {winner}** with accuracy of **{winner_score:.4f}** ({winner_score*100:.2f}%)")
+        st.success(f"**Winner: {winner}** with accuracy of **{winner_score:.4f}** ({winner_score*100:.2f}%)")
     else:
-        st.info(f"🤝 **It's a Tie!** All models achieved **{winner_score:.4f}** ({winner_score*100:.2f}%) accuracy")
+        st.info(f"**It's a Tie!** All models achieved **{winner_score:.4f}** ({winner_score*100:.2f}%) accuracy")
     
     # Download comparison
     st.header("Download Comparison Results")
