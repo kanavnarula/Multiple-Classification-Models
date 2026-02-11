@@ -1,33 +1,30 @@
 """
 Mushroom Classification - Streamlit Web Application
 This app trains and evaluates multiple classification models on the Mushroom Classification dataset
+
+Architecture:
+- utils/data_loader.py: Data loading and dataset info display
+- utils/preprocessing.py: Data encoding and train-test split
+- utils/visualization.py: Common plotting functions
+- model/logistic_regression.py: Logistic Regression training and display
+- model/decision_tree.py: Decision Tree training and display
+- model/knn.py: K-Nearest Neighbors training and display
+- model/comparison.py: Model comparison functionality
 """
 
 import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import kagglehub
-import os
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import (
-    accuracy_score, 
-    roc_auc_score, 
-    precision_score, 
-    recall_score, 
-    f1_score,
-    matthews_corrcoef,
-    confusion_matrix,
-    classification_report,
-    roc_curve
-)
 import warnings
 warnings.filterwarnings('ignore')
+
+# Import utilities
+from utils.data_loader import load_kaggle_dataset, load_uploaded_file, display_dataset_info
+from utils.visualization import plot_class_distribution
+
+# Import model modules
+from model.logistic_regression import train_logistic_regression, display_logistic_regression_results
+from model.decision_tree import train_decision_tree, display_decision_tree_results
+from model.knn import train_knn, display_knn_results
+from model.comparison import display_comparison_results
 
 # Page configuration
 st.set_page_config(
@@ -52,11 +49,28 @@ st.markdown("""
 
 # Title
 st.title("Mushroom Classification - Multiple Models")
-st.markdown("### Compare Multiple Models")
+st.markdown("### Compare Multiple Classification Models")
 st.markdown("---")
 
 # Sidebar
 with st.sidebar:
+    st.header("Dataset Source")
+    data_source = st.radio(
+        "Choose Data Source",
+        ["Default Dataset (Kaggle)", "Upload CSV File"],
+        help="Upload your own CSV file or use the default mushroom dataset"
+    )
+    
+    uploaded_file = None
+    if data_source == "Upload CSV File":
+        st.info("Upload smaller datasets for better performance on free tier.")
+        uploaded_file = st.file_uploader(
+            "Upload CSV File",
+            type=['csv'],
+            help="Upload a CSV file with the same structure as the mushroom dataset. First column should be the target variable."
+        )
+    
+    st.markdown("---")
     st.header("Model Selection")
     model_choice = st.selectbox(
         "Choose Classification Model",
@@ -91,677 +105,53 @@ with st.sidebar:
     - Task: Binary Classification
     - Classes: Edible / Poisonous
     - Features: 22 categorical attributes
+    - Total Samples: 8,124
     """)
 
-# Cache dataset loading
-@st.cache_data
-def load_dataset():
-    """Load and preprocess the mushroom dataset"""
-    with st.spinner("Downloading dataset from Kaggle..."):
-        path = kagglehub.dataset_download("uciml/mushroom-classification")
-    
-    # Find CSV file
-    csv_file = None
-    for file in os.listdir(path):
-        if file.endswith('.csv'):
-            csv_file = os.path.join(path, file)
-            break
-    
-    if csv_file:
-        df = pd.read_csv(csv_file)
-        return df, path
-    else:
-        return None, None
-
-# Train model function
-@st.cache_data
-def train_logistic_regression(df, test_size, random_state, max_iter):
-    """Train Logistic Regression model and return results"""
-    
-    # Encode categorical features
-    df_encoded = df.copy()
-    label_encoders = {}
-    
-    for column in df_encoded.columns:
-        le = LabelEncoder()
-        df_encoded[column] = le.fit_transform(df_encoded[column])
-        label_encoders[column] = le
-    
-    # Separate features and target
-    target_col = df.columns[0]
-    X = df_encoded.drop(target_col, axis=1)
-    y = df_encoded[target_col]
-    
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-    
-    # Train model
-    model = LogisticRegression(max_iter=max_iter, random_state=random_state)
-    model.fit(X_train, y_train)
-    
-    # Predictions
-    y_pred = model.predict(X_test)
-    y_pred_proba = model.predict_proba(X_test)[:, 1]
-    
-    # Calculate metrics
-    metrics = {
-        'Model': 'Logistic Regression',
-        'Accuracy': accuracy_score(y_test, y_pred),
-        'AUC Score': roc_auc_score(y_test, y_pred_proba),
-        'Precision': precision_score(y_test, y_pred),
-        'Recall': recall_score(y_test, y_pred),
-        'F1 Score': f1_score(y_test, y_pred),
-        'MCC Score': matthews_corrcoef(y_test, y_pred)
-    }
-    
-    # Confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
-    
-    # ROC curve
-    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
-    
-    # Classification report
-    report = classification_report(y_test, y_pred, 
-                                   target_names=['Edible', 'Poisonous'],
-                                   output_dict=True)
-    
-    return {
-        'model': model,
-        'model_name': 'Logistic Regression',
-        'metrics': metrics,
-        'confusion_matrix': cm,
-        'roc_data': (fpr, tpr),
-        'report': report,
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_test': y_test,
-        'y_pred': y_pred,
-        'target_col': target_col,
-        'feature_importance': None
-    }
-
-@st.cache_data
-def train_decision_tree(df, test_size, random_state, max_depth, min_samples_split):
-    """Train Decision Tree model and return results"""
-    
-    # Encode categorical features
-    df_encoded = df.copy()
-    label_encoders = {}
-    
-    for column in df_encoded.columns:
-        le = LabelEncoder()
-        df_encoded[column] = le.fit_transform(df_encoded[column])
-        label_encoders[column] = le
-    
-    # Separate features and target
-    target_col = df.columns[0]
-    X = df_encoded.drop(target_col, axis=1)
-    y = df_encoded[target_col]
-    
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-    
-    # Train model
-    model = DecisionTreeClassifier(
-        max_depth=max_depth, 
-        min_samples_split=min_samples_split,
-        random_state=random_state
-    )
-    model.fit(X_train, y_train)
-    
-    # Predictions
-    y_pred = model.predict(X_test)
-    y_pred_proba = model.predict_proba(X_test)[:, 1]
-    
-    # Calculate metrics
-    metrics = {
-        'Model': 'Decision Tree',
-        'Accuracy': accuracy_score(y_test, y_pred),
-        'AUC Score': roc_auc_score(y_test, y_pred_proba),
-        'Precision': precision_score(y_test, y_pred),
-        'Recall': recall_score(y_test, y_pred),
-        'F1 Score': f1_score(y_test, y_pred),
-        'MCC Score': matthews_corrcoef(y_test, y_pred)
-    }
-    
-    # Confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
-    
-    # ROC curve
-    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
-    
-    # Classification report
-    report = classification_report(y_test, y_pred, 
-                                   target_names=['Edible', 'Poisonous'],
-                                   output_dict=True)
-    
-    # Feature importance
-    feature_importance = pd.DataFrame({
-        'Feature': X.columns,
-        'Importance': model.feature_importances_
-    }).sort_values('Importance', ascending=False)
-    
-    return {
-        'model': model,
-        'model_name': 'Decision Tree',
-        'metrics': metrics,
-        'confusion_matrix': cm,
-        'roc_data': (fpr, tpr),
-        'report': report,
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_test': y_test,
-        'y_pred': y_pred,
-        'target_col': target_col,
-        'feature_importance': feature_importance,
-        'tree_depth': model.get_depth(),
-        'n_leaves': model.get_n_leaves()
-    }
-
-@st.cache_data
-def train_knn(df, test_size, random_state, n_neighbors, weights):
-    """Train K-Nearest Neighbors model and return results"""
-    
-    # Encode categorical features
-    df_encoded = df.copy()
-    label_encoders = {}
-    
-    for column in df_encoded.columns:
-        le = LabelEncoder()
-        df_encoded[column] = le.fit_transform(df_encoded[column])
-        label_encoders[column] = le
-    
-    # Separate features and target
-    target_col = df.columns[0]
-    X = df_encoded.drop(target_col, axis=1)
-    y = df_encoded[target_col]
-    
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-    
-    # Train model
-    model = KNeighborsClassifier(
-        n_neighbors=n_neighbors,
-        weights=weights,
-        metric='minkowski',
-        p=2
-    )
-    model.fit(X_train, y_train)
-    
-    # Predictions
-    y_pred = model.predict(X_test)
-    y_pred_proba = model.predict_proba(X_test)[:, 1]
-    
-    # Calculate metrics
-    metrics = {
-        'Model': 'K-Nearest Neighbors',
-        'Accuracy': accuracy_score(y_test, y_pred),
-        'AUC Score': roc_auc_score(y_test, y_pred_proba),
-        'Precision': precision_score(y_test, y_pred),
-        'Recall': recall_score(y_test, y_pred),
-        'F1 Score': f1_score(y_test, y_pred),
-        'MCC Score': matthews_corrcoef(y_test, y_pred)
-    }
-    
-    # Confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
-    
-    # ROC curve
-    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
-    
-    # Classification report
-    report = classification_report(y_test, y_pred, 
-                                   target_names=['Edible', 'Poisonous'],
-                                   output_dict=True)
-    
-    return {
-        'model': model,
-        'model_name': 'K-Nearest Neighbors',
-        'metrics': metrics,
-        'confusion_matrix': cm,
-        'roc_data': (fpr, tpr),
-        'report': report,
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_test': y_test,
-        'y_pred': y_pred,
-        'target_col': target_col,
-        'feature_importance': None,
-        'n_neighbors': n_neighbors,
-        'weights': weights
-    }
-
-def display_single_model_results(results):
-    """Display results for a single model"""
-    
-    st.success(f"{results['model_name']} trained successfully!")
-    
-    # Display metrics
-    st.header("Model Performance Metrics")
-    
-    # Metrics in columns
-    col1, col2, col3 = st.columns(3)
-    col4, col5, col6 = st.columns(3)
-    
-    metrics = results['metrics']
-    
-    with col1:
-        st.metric("Accuracy", f"{metrics['Accuracy']:.4f}", 
-                 f"{metrics['Accuracy']*100:.2f}%")
-    with col2:
-        st.metric("AUC Score", f"{metrics['AUC Score']:.4f}")
-    with col3:
-        st.metric("Precision", f"{metrics['Precision']:.4f}")
-    with col4:
-        st.metric("Recall", f"{metrics['Recall']:.4f}")
-    with col5:
-        st.metric("F1 Score", f"{metrics['F1 Score']:.4f}")
-    with col6:
-        st.metric("MCC Score", f"{metrics['MCC Score']:.4f}")
-    
-    st.markdown("---")
-    
-    # Visualizations
-    st.header("Model Visualizations")
-    
-    # Two columns for confusion matrix and ROC curve
-    col1, col2 = st.columns(2)
-    
-    color_map = 'Blues' if results['model_name'] == 'Logistic Regression' else 'Greens'
-    roc_color = 'darkorange' if results['model_name'] == 'Logistic Regression' else 'green'
-    
-    with col1:
-        st.subheader("Confusion Matrix")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(results['confusion_matrix'], annot=True, fmt='d', 
-                   cmap=color_map, cbar=True,
-                   xticklabels=['Edible', 'Poisonous'],
-                   yticklabels=['Edible', 'Poisonous'], ax=ax)
-        ax.set_title(f'Confusion Matrix - {results["model_name"]}', 
-                    fontsize=14, fontweight='bold')
-        ax.set_ylabel('True Label', fontsize=12)
-        ax.set_xlabel('Predicted Label', fontsize=12)
-        plt.tight_layout()
-        st.pyplot(fig)
-        
-        # Show confusion matrix values
-        cm = results['confusion_matrix']
-        st.write(f"**True Negatives:** {cm[0,0]}")
-        st.write(f"**False Positives:** {cm[0,1]}")
-        st.write(f"**False Negatives:** {cm[1,0]}")
-        st.write(f"**True Positives:** {cm[1,1]}")
-    
-    with col2:
-        st.subheader("ROC Curve")
-        fpr, tpr = results['roc_data']
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.plot(fpr, tpr, color=roc_color, lw=2, 
-               label=f'ROC curve (AUC = {metrics["AUC Score"]:.4f})')
-        ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', 
-               label='Random Classifier')
-        ax.set_xlim([0.0, 1.0])
-        ax.set_ylim([0.0, 1.05])
-        ax.set_xlabel('False Positive Rate', fontsize=12)
-        ax.set_ylabel('True Positive Rate', fontsize=12)
-        ax.set_title(f'ROC Curve - {results["model_name"]}', 
-                    fontsize=14, fontweight='bold')
-        ax.legend(loc="lower right")
-        ax.grid(alpha=0.3)
-        plt.tight_layout()
-        st.pyplot(fig)
-    
-    st.markdown("---")
-    
-    # Feature Importance (for Decision Tree)
-    if results['feature_importance'] is not None:
-        st.header("Feature Importance")
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            fig, ax = plt.subplots(figsize=(12, 8))
-            top_features = results['feature_importance'].head(15)
-            ax.barh(range(len(top_features)), top_features['Importance'], 
-                   color='forestgreen', edgecolor='black')
-            ax.set_yticks(range(len(top_features)))
-            ax.set_yticklabels(top_features['Feature'])
-            ax.set_xlabel('Importance Score', fontsize=12)
-            ax.set_ylabel('Features', fontsize=12)
-            ax.set_title('Top 15 Feature Importances', fontsize=14, fontweight='bold')
-            ax.invert_yaxis()
-            ax.grid(axis='x', alpha=0.3)
-            plt.tight_layout()
-            st.pyplot(fig)
-        
-        with col2:
-            st.subheader("Tree Statistics")
-            st.metric("Tree Depth", results['tree_depth'])
-            st.metric("Number of Leaves", results['n_leaves'])
-            
-            st.subheader("Top 5 Features")
-            for idx, row in results['feature_importance'].head(5).iterrows():
-                st.write(f"**{row['Feature']}**: {row['Importance']:.4f}")
-        
-        st.markdown("---")
-    
-    # # Classification Report
-    # st.header("📄 Detailed Classification Report")
-    # report_df = pd.DataFrame(results['report']).transpose()
-    # st.dataframe(report_df.style.highlight_max(axis=0, color='lightgreen'), 
-    #             use_container_width=True)
-    
-    # st.markdown("---")
-    
-    # Metrics Comparison Bar Chart
-    st.header("Metrics Overview")
-    fig, ax = plt.subplots(figsize=(12, 6))
-    metric_names = [k for k in metrics.keys() if k != 'Model']
-    metric_values = [v for k, v in metrics.items() if k != 'Model']
-    
-    bars = ax.bar(metric_names, metric_values, color='steelblue', 
-                 edgecolor='black', alpha=0.7)
-    ax.set_ylim([0, 1.1])
-    ax.set_ylabel('Score', fontsize=12)
-    ax.set_title(f'{results["model_name"]} - Performance Metrics', 
-                fontsize=14, fontweight='bold')
-    ax.axhline(y=0.95, color='green', linestyle='--', alpha=0.5, label='Excellent (0.95)')
-    ax.axhline(y=0.80, color='orange', linestyle='--', alpha=0.5, label='Good (0.80)')
-    ax.legend()
-    ax.grid(axis='y', alpha=0.3)
-    
-    # Add value labels on bars
-    for bar in bars:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height,
-               f'{height:.4f}',
-               ha='center', va='bottom', fontweight='bold')
-    
-    plt.xticks(rotation=45, ha='right')
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    st.markdown("---")
-    
-    # Model Summary
-    st.header("Model Summary")
-    summary_text = f"""
-    **Model:** {results['model_name']}  
-    **Training Samples:** {results['X_train'].shape[0]}  
-    **Testing Samples:** {results['X_test'].shape[0]}  
-    **Features:** {results['X_train'].shape[1]}  
-    """
-    
-    if results['feature_importance'] is not None:
-        summary_text += f"""**Max Depth:** {results['model'].max_depth}  
-    **Min Samples Split:** {results['model'].min_samples_split}  
-    **Actual Tree Depth:** {results['tree_depth']}  
-    **Number of Leaves:** {results['n_leaves']}  
-    """
-    
-    if 'n_neighbors' in results:
-        summary_text += f"""**Number of Neighbors:** {results['n_neighbors']}  
-    **Weights:** {results['weights']}  
-    **Distance Metric:** minkowski (p=2)  
-    """
-    
-    perf_level = 'EXCELLENT' if metrics['Accuracy'] >= 0.95 else 'VERY GOOD' if metrics['Accuracy'] >= 0.90 else 'GOOD'
-    summary_text += f"\n**Performance:** {perf_level}"
-    
-    st.info(summary_text)
-    
-    # Download results
-    st.header("Download Results")
-    metrics_df = pd.DataFrame([metrics])
-    csv = metrics_df.to_csv(index=False)
-    
-    st.download_button(
-        label=f"Download {results['model_name']} Metrics as CSV",
-        data=csv,
-        file_name=f"mushroom_{results['model_name'].lower().replace(' ', '_')}_metrics.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
-
-def display_comparison_results(lr_results, dt_results, knn_results=None):
-    """Display comparison between two or three models"""
-    
-    st.success("All models trained successfully!")
-    
-    # Model Comparison Header
-    st.header("Model Comparison")
-
-    # Side-by-side metrics
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.subheader("Logistic Regression")
-        for metric, value in lr_results['metrics'].items():
-            if metric != 'Model':
-                st.metric(metric, f"{value:.4f}")
-    
-    with col2:
-        st.subheader("Decision Tree")
-        for metric, value in dt_results['metrics'].items():
-            if metric != 'Model':
-                delta = value - lr_results['metrics'][metric]
-                delta_str = f"{delta:+.4f}"
-                st.metric(metric, f"{value:.4f}", delta=delta_str)
-    
-    if knn_results is not None:
-        with col3:
-            st.subheader("K-Nearest Neighbors")
-            for metric, value in knn_results['metrics'].items():
-                if metric != 'Model':
-                    delta = value - lr_results['metrics'][metric]
-                    delta_str = f"{delta:+.4f}"
-                    st.metric(metric, f"{value:.4f}", delta=delta_str)
-    
-    st.markdown("---")
-    
-    # Metrics Comparison Chart
-    st.header("Metrics Comparison Chart")
-    
-    comparison_df = pd.DataFrame({
-        'Metric': [k for k in lr_results['metrics'].keys() if k != 'Model'],
-        'Logistic Regression': [v for k, v in lr_results['metrics'].items() if k != 'Model'],
-        'Decision Tree': [v for k, v in dt_results['metrics'].items() if k != 'Model']
-    })
-    
-    if knn_results is not None:
-        comparison_df['K-Nearest Neighbors'] = [v for k, v in knn_results['metrics'].items() if k != 'Model']
-    
-    fig, ax = plt.subplots(figsize=(14, 6))
-    x = np.arange(len(comparison_df))
-    width = 0.25
-    
-    bars1 = ax.bar(x - width, comparison_df['Logistic Regression'], width, 
-                   label='Logistic Regression', color='steelblue', edgecolor='black')
-    bars2 = ax.bar(x, comparison_df['Decision Tree'], width, 
-                   label='Decision Tree', color='forestgreen', edgecolor='black')
-    
-    if knn_results is not None:
-        bars3 = ax.bar(x + width, comparison_df['K-Nearest Neighbors'], width, 
-                       label='K-Nearest Neighbors', color='lightcoral', edgecolor='black')
-    
-    ax.set_ylabel('Score', fontsize=12)
-    ax.set_title('Model Performance Comparison', fontsize=16, fontweight='bold')
-    ax.set_xticks(x)
-    ax.set_xticklabels(comparison_df['Metric'], rotation=45, ha='right')
-    ax.legend(fontsize=12)
-    ax.set_ylim([0, 1.1])
-    ax.axhline(y=0.95, color='green', linestyle='--', alpha=0.3)
-    ax.axhline(y=0.80, color='orange', linestyle='--', alpha=0.3)
-    ax.grid(axis='y', alpha=0.3)
-    
-    # Add value labels
-    for bars in [bars1, bars2, bars3]:
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                   f'{height:.3f}',
-                   ha='center', va='bottom', fontsize=8, fontweight='bold')
-    
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    st.markdown("---")
-    
-    # Side-by-side confusion matrices
-    st.header("Confusion Matrices Comparison")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.subheader("Logistic Regression")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(lr_results['confusion_matrix'], annot=True, fmt='d', 
-                   cmap='Blues', cbar=True,
-                   xticklabels=['Edible', 'Poisonous'],
-                   yticklabels=['Edible', 'Poisonous'], ax=ax)
-        ax.set_title('Confusion Matrix - Logistic Regression', fontweight='bold')
-        ax.set_ylabel('True Label')
-        ax.set_xlabel('Predicted Label')
-        plt.tight_layout()
-        st.pyplot(fig)
-    
-    with col2:
-        st.subheader("Decision Tree")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(dt_results['confusion_matrix'], annot=True, fmt='d', 
-                   cmap='Greens', cbar=True,
-                   xticklabels=['Edible', 'Poisonous'],
-                   yticklabels=['Edible', 'Poisonous'], ax=ax)
-        ax.set_title('Confusion Matrix - Decision Tree', fontweight='bold')
-        ax.set_ylabel('True Label')
-        ax.set_xlabel('Predicted Label')
-        plt.tight_layout()
-        st.pyplot(fig)
-    
-    if knn_results is not None:
-        with col3:
-            st.subheader("K-Nearest Neighbors")
-            fig, ax = plt.subplots(figsize=(8, 6))
-            sns.heatmap(knn_results['confusion_matrix'], annot=True, fmt='d', 
-                       cmap='Reds', cbar=True,
-                       xticklabels=['Edible', 'Poisonous'],
-                       yticklabels=['Edible', 'Poisonous'], ax=ax)
-            ax.set_title('Confusion Matrix - K-Nearest Neighbors', fontweight='bold')
-            ax.set_ylabel('True Label')
-            ax.set_xlabel('Predicted Label')
-            plt.tight_layout()
-            st.pyplot(fig)
-    
-    st.markdown("---")
-    
-    # ROC Curves Comparison
-    st.header("ROC Curves Comparison")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    fpr_lr, tpr_lr = lr_results['roc_data']
-    fpr_dt, tpr_dt = dt_results['roc_data']
-    
-    ax.plot(fpr_lr, tpr_lr, color='darkorange', lw=2, 
-           label=f'Logistic Regression (AUC = {lr_results["metrics"]["AUC Score"]:.4f})')
-    ax.plot(fpr_dt, tpr_dt, color='green', lw=2, 
-           label=f'Decision Tree (AUC = {dt_results["metrics"]["AUC Score"]:.4f})')
-    
-    if knn_results is not None:
-        fpr_knn, tpr_knn = knn_results['roc_data']
-        ax.plot(fpr_knn, tpr_knn, color='red', lw=2, 
-               label=f'K-Nearest Neighbors (AUC = {knn_results["metrics"]["AUC Score"]:.4f})')
-    
-    ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', 
-           label='Random Classifier')
-    
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('False Positive Rate', fontsize=12)
-    ax.set_ylabel('True Positive Rate', fontsize=12)
-    ax.set_title('ROC Curve Comparison', fontsize=14, fontweight='bold')
-    ax.legend(loc="lower right", fontsize=10)
-    ax.grid(alpha=0.3)
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    st.markdown("---")
-    
-    # Winner Declaration
-    st.header("Best Model")
-    
-    lr_score = lr_results['metrics']['Accuracy']
-    dt_score = dt_results['metrics']['Accuracy']
-    
-    if knn_results is not None:
-        knn_score = knn_results['metrics']['Accuracy']
-    
-        if lr_score > dt_score and lr_score > knn_score:
-            winner = "Logistic Regression"
-            winner_score = lr_score
-        elif dt_score > lr_score and dt_score > knn_score:
-            winner = "Decision Tree"
-            winner_score = dt_score
-        elif knn_score > lr_score and knn_score > dt_score:
-            winner = "K-Nearest Neighbors"
-            winner_score = knn_score
-        else:
-            winner = "Tie"
-            winner_score = lr_score  # All are equal
-    
-    else:
-        if lr_score > dt_score:
-            winner = "Logistic Regression"
-            winner_score = lr_score
-        elif dt_score > lr_score:
-            winner = "Decision Tree"
-            winner_score = dt_score
-        else:
-            winner = "Tie"
-            winner_score = lr_score
-    
-    if winner != "Tie":
-        st.success(f"🏆 **Winner: {winner}** with accuracy of **{winner_score:.4f}** ({winner_score*100:.2f}%)")
-    else:
-        st.info(f"🤝 **It's a Tie!** All models achieved **{winner_score:.4f}** ({winner_score*100:.2f}%) accuracy")
-    
-    # Download comparison
-    st.header("Download Comparison Results")
-    csv = comparison_df.to_csv(index=False)
-    
-    st.download_button(
-        label="Download Comparison as CSV",
-        data=csv,
-        file_name="mushroom_models_comparison.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
 
 # Main app
 def main():
-    # Load dataset
-    df, path = load_dataset()
+    # Load dataset based on source
+    df = None
     
-    if df is None:
-        st.error("Failed to load dataset. Please try again.")
-        return
+    if data_source == "Upload CSV File":
+        if uploaded_file is not None:
+            with st.spinner("Loading uploaded CSV file..."):
+                df = load_uploaded_file(uploaded_file)
+            
+            if df is not None:
+                st.success("CSV file uploaded and loaded successfully!")
+            else:
+                st.warning("Please upload a valid CSV file to proceed.")
+                return
+        else:
+            st.info("👆 Please upload a CSV file from the sidebar to get started.")
+            st.markdown("""
+            ### Expected CSV Format:
+            - **First column:** Target variable (class labels)
+            - **Remaining columns:** Features
+            - All columns should contain categorical or numerical data
+            - **Example:** Mushroom dataset has 23 columns (1 target + 22 features)
+            
+            ### Tips:
+            - Ensure your CSV has headers
+            - First column will be treated as the target variable
+            - Missing values will be displayed in the overview
+            """)
+            return
+    else:
+        # Load default dataset
+        with st.spinner("Loading dataset from Kaggle..."):
+            df, path = load_kaggle_dataset()
+        
+        if df is None:
+            st.error("Failed to load dataset. Please try again.")
+            return
+        
+        st.success("Dataset loaded successfully from Kaggle!")
     
-    st.success("Dataset loaded successfully")
-    
-    # Dataset Overview
-    st.header("Dataset Overview")
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Total Samples", df.shape[0])
-    with col2:
-        st.metric("Features", df.shape[1] - 1)
-    with col3:
-        st.metric("Classes", df[df.columns[0]].nunique())
-    with col4:
-        st.metric("Missing Values", df.isnull().sum().sum())
+    # Display dataset information
+    display_dataset_info(df)
     
     # Show dataset preview
     with st.expander("View Dataset Preview"):
@@ -769,45 +159,52 @@ def main():
     
     # Class distribution
     with st.expander("Class Distribution"):
-        fig, ax = plt.subplots(figsize=(10, 5))
-        df[df.columns[0]].value_counts().plot(kind='bar', color=['#2ecc71', '#e74c3c'], 
-                                               edgecolor='black', ax=ax)
-        ax.set_title('Distribution of Mushroom Classes', fontsize=14, fontweight='bold')
-        ax.set_xlabel('Class', fontsize=12)
-        ax.set_ylabel('Count', fontsize=12)
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=0)
-        plt.tight_layout()
+        fig = plot_class_distribution(df)
         st.pyplot(fig)
     
     st.markdown("---")
     
     # Train model button
     button_text = f"Train {model_choice}" if model_choice != "Compare All Models" else "Train All Models"
-    
+
     if st.button(button_text, type="primary", use_container_width=True):
         
         if model_choice == "Logistic Regression":
             with st.spinner("Training Logistic Regression model..."):
                 results = train_logistic_regression(df, test_size, random_state, max_iter)
-            display_single_model_results(results)
+            display_logistic_regression_results(results)
         
         elif model_choice == "Decision Tree":
             with st.spinner("Training Decision Tree model..."):
                 results = train_decision_tree(df, test_size, random_state, max_depth, min_samples_split)
-            display_single_model_results(results)
+            display_decision_tree_results(results)
         
         elif model_choice == "K-Nearest Neighbors":
             with st.spinner("Training K-Nearest Neighbors model..."):
                 results = train_knn(df, test_size, random_state, n_neighbors, weights)
-            display_single_model_results(results)
+            display_knn_results(results)
         
         else:  # Compare All Models
             with st.spinner("Training all models... Please wait."):
-                lr_results = train_logistic_regression(df, test_size, random_state, max_iter)
-                dt_results = train_decision_tree(df, test_size, random_state, max_depth, min_samples_split)
-                knn_results = train_knn(df, test_size, random_state, n_neighbors, weights)
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    with st.spinner("Training Logistic Regression..."):
+                        lr_results = train_logistic_regression(df, test_size, random_state, max_iter)
+                    st.success("Logistic Regression Done")
+
+                with col2:
+                    with st.spinner("Training Decision Tree..."):
+                        dt_results = train_decision_tree(df, test_size, random_state, max_depth, min_samples_split)
+                    st.success("Decision Tree Done")
+                
+                with col3:
+                    with st.spinner("Training KNN..."):
+                        knn_results = train_knn(df, test_size, random_state, n_neighbors, weights)
+                    st.success("KNN Done")
             
             display_comparison_results(lr_results, dt_results, knn_results)
+
 
 if __name__ == "__main__":
     main()
