@@ -14,6 +14,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import (
     accuracy_score, 
     roc_auc_score, 
@@ -59,7 +60,7 @@ with st.sidebar:
     st.header("Model Selection")
     model_choice = st.selectbox(
         "Choose Classification Model",
-        ["Logistic Regression", "Decision Tree", "Compare Both Models"]
+        ["Logistic Regression", "Decision Tree", "K-Nearest Neighbors", "Compare All Models"]
     )
     
     st.markdown("---")
@@ -68,14 +69,19 @@ with st.sidebar:
     random_state = st.number_input("Random State", 0, 100, 42)
     
     # Model-specific parameters
-    if model_choice == "Logistic Regression" or model_choice == "Compare Both Models":
+    if model_choice == "Logistic Regression" or model_choice == "Compare All Models":
         st.subheader("Logistic Regression")
         max_iter = st.slider("Max Iterations", 100, 2000, 1000, 100)
     
-    if model_choice == "Decision Tree" or model_choice == "Compare Both Models":
+    if model_choice == "Decision Tree" or model_choice == "Compare All Models":
         st.subheader("Decision Tree")
         max_depth = st.slider("Max Depth", 3, 30, 10, 1)
         min_samples_split = st.slider("Min Samples Split", 2, 20, 5, 1)
+    
+    if model_choice == "K-Nearest Neighbors" or model_choice == "Compare All Models":
+        st.subheader("K-Nearest Neighbors")
+        n_neighbors = st.slider("Number of Neighbors", 1, 20, 5, 1)
+        weights = st.selectbox("Weights", ["uniform", "distance"], index=0)
     
     st.markdown("---")
     st.header("About Dataset")
@@ -256,6 +262,81 @@ def train_decision_tree(df, test_size, random_state, max_depth, min_samples_spli
         'n_leaves': model.get_n_leaves()
     }
 
+@st.cache_data
+def train_knn(df, test_size, random_state, n_neighbors, weights):
+    """Train K-Nearest Neighbors model and return results"""
+    
+    # Encode categorical features
+    df_encoded = df.copy()
+    label_encoders = {}
+    
+    for column in df_encoded.columns:
+        le = LabelEncoder()
+        df_encoded[column] = le.fit_transform(df_encoded[column])
+        label_encoders[column] = le
+    
+    # Separate features and target
+    target_col = df.columns[0]
+    X = df_encoded.drop(target_col, axis=1)
+    y = df_encoded[target_col]
+    
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y
+    )
+    
+    # Train model
+    model = KNeighborsClassifier(
+        n_neighbors=n_neighbors,
+        weights=weights,
+        metric='minkowski',
+        p=2
+    )
+    model.fit(X_train, y_train)
+    
+    # Predictions
+    y_pred = model.predict(X_test)
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    
+    # Calculate metrics
+    metrics = {
+        'Model': 'K-Nearest Neighbors',
+        'Accuracy': accuracy_score(y_test, y_pred),
+        'AUC Score': roc_auc_score(y_test, y_pred_proba),
+        'Precision': precision_score(y_test, y_pred),
+        'Recall': recall_score(y_test, y_pred),
+        'F1 Score': f1_score(y_test, y_pred),
+        'MCC Score': matthews_corrcoef(y_test, y_pred)
+    }
+    
+    # Confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    
+    # ROC curve
+    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+    
+    # Classification report
+    report = classification_report(y_test, y_pred, 
+                                   target_names=['Edible', 'Poisonous'],
+                                   output_dict=True)
+    
+    return {
+        'model': model,
+        'model_name': 'K-Nearest Neighbors',
+        'metrics': metrics,
+        'confusion_matrix': cm,
+        'roc_data': (fpr, tpr),
+        'report': report,
+        'X_train': X_train,
+        'X_test': X_test,
+        'y_test': y_test,
+        'y_pred': y_pred,
+        'target_col': target_col,
+        'feature_importance': None,
+        'n_neighbors': n_neighbors,
+        'weights': weights
+    }
+
 def display_single_model_results(results):
     """Display results for a single model"""
     
@@ -368,13 +449,13 @@ def display_single_model_results(results):
         
         st.markdown("---")
     
-    # Classification Report
-    st.header("📄 Detailed Classification Report")
-    report_df = pd.DataFrame(results['report']).transpose()
-    st.dataframe(report_df.style.highlight_max(axis=0, color='lightgreen'), 
-                use_container_width=True)
+    # # Classification Report
+    # st.header("📄 Detailed Classification Report")
+    # report_df = pd.DataFrame(results['report']).transpose()
+    # st.dataframe(report_df.style.highlight_max(axis=0, color='lightgreen'), 
+    #             use_container_width=True)
     
-    st.markdown("---")
+    # st.markdown("---")
     
     # Metrics Comparison Bar Chart
     st.header("Metrics Overview")
@@ -422,6 +503,12 @@ def display_single_model_results(results):
     **Number of Leaves:** {results['n_leaves']}  
     """
     
+    if 'n_neighbors' in results:
+        summary_text += f"""**Number of Neighbors:** {results['n_neighbors']}  
+    **Weights:** {results['weights']}  
+    **Distance Metric:** minkowski (p=2)  
+    """
+    
     perf_level = 'EXCELLENT' if metrics['Accuracy'] >= 0.95 else 'VERY GOOD' if metrics['Accuracy'] >= 0.90 else 'GOOD'
     summary_text += f"\n**Performance:** {perf_level}"
     
@@ -440,16 +527,16 @@ def display_single_model_results(results):
         use_container_width=True
     )
 
-def display_comparison_results(lr_results, dt_results):
-    """Display comparison between two models"""
+def display_comparison_results(lr_results, dt_results, knn_results=None):
+    """Display comparison between two or three models"""
     
-    st.success("Both models trained successfully!")
+    st.success("All models trained successfully!")
     
     # Model Comparison Header
     st.header("Model Comparison")
 
     # Side-by-side metrics
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.subheader("Logistic Regression")
@@ -465,6 +552,15 @@ def display_comparison_results(lr_results, dt_results):
                 delta_str = f"{delta:+.4f}"
                 st.metric(metric, f"{value:.4f}", delta=delta_str)
     
+    if knn_results is not None:
+        with col3:
+            st.subheader("K-Nearest Neighbors")
+            for metric, value in knn_results['metrics'].items():
+                if metric != 'Model':
+                    delta = value - lr_results['metrics'][metric]
+                    delta_str = f"{delta:+.4f}"
+                    st.metric(metric, f"{value:.4f}", delta=delta_str)
+    
     st.markdown("---")
     
     # Metrics Comparison Chart
@@ -476,14 +572,21 @@ def display_comparison_results(lr_results, dt_results):
         'Decision Tree': [v for k, v in dt_results['metrics'].items() if k != 'Model']
     })
     
+    if knn_results is not None:
+        comparison_df['K-Nearest Neighbors'] = [v for k, v in knn_results['metrics'].items() if k != 'Model']
+    
     fig, ax = plt.subplots(figsize=(14, 6))
     x = np.arange(len(comparison_df))
-    width = 0.35
+    width = 0.25
     
-    bars1 = ax.bar(x - width/2, comparison_df['Logistic Regression'], width, 
+    bars1 = ax.bar(x - width, comparison_df['Logistic Regression'], width, 
                    label='Logistic Regression', color='steelblue', edgecolor='black')
-    bars2 = ax.bar(x + width/2, comparison_df['Decision Tree'], width, 
+    bars2 = ax.bar(x, comparison_df['Decision Tree'], width, 
                    label='Decision Tree', color='forestgreen', edgecolor='black')
+    
+    if knn_results is not None:
+        bars3 = ax.bar(x + width, comparison_df['K-Nearest Neighbors'], width, 
+                       label='K-Nearest Neighbors', color='lightcoral', edgecolor='black')
     
     ax.set_ylabel('Score', fontsize=12)
     ax.set_title('Model Performance Comparison', fontsize=16, fontweight='bold')
@@ -496,7 +599,7 @@ def display_comparison_results(lr_results, dt_results):
     ax.grid(axis='y', alpha=0.3)
     
     # Add value labels
-    for bars in [bars1, bars2]:
+    for bars in [bars1, bars2, bars3]:
         for bar in bars:
             height = bar.get_height()
             ax.text(bar.get_x() + bar.get_width()/2., height,
@@ -510,7 +613,7 @@ def display_comparison_results(lr_results, dt_results):
     
     # Side-by-side confusion matrices
     st.header("Confusion Matrices Comparison")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.subheader("Logistic Regression")
@@ -538,6 +641,20 @@ def display_comparison_results(lr_results, dt_results):
         plt.tight_layout()
         st.pyplot(fig)
     
+    if knn_results is not None:
+        with col3:
+            st.subheader("K-Nearest Neighbors")
+            fig, ax = plt.subplots(figsize=(8, 6))
+            sns.heatmap(knn_results['confusion_matrix'], annot=True, fmt='d', 
+                       cmap='Reds', cbar=True,
+                       xticklabels=['Edible', 'Poisonous'],
+                       yticklabels=['Edible', 'Poisonous'], ax=ax)
+            ax.set_title('Confusion Matrix - K-Nearest Neighbors', fontweight='bold')
+            ax.set_ylabel('True Label')
+            ax.set_xlabel('Predicted Label')
+            plt.tight_layout()
+            st.pyplot(fig)
+    
     st.markdown("---")
     
     # ROC Curves Comparison
@@ -551,6 +668,12 @@ def display_comparison_results(lr_results, dt_results):
            label=f'Logistic Regression (AUC = {lr_results["metrics"]["AUC Score"]:.4f})')
     ax.plot(fpr_dt, tpr_dt, color='green', lw=2, 
            label=f'Decision Tree (AUC = {dt_results["metrics"]["AUC Score"]:.4f})')
+    
+    if knn_results is not None:
+        fpr_knn, tpr_knn = knn_results['roc_data']
+        ax.plot(fpr_knn, tpr_knn, color='red', lw=2, 
+               label=f'K-Nearest Neighbors (AUC = {knn_results["metrics"]["AUC Score"]:.4f})')
+    
     ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', 
            label='Random Classifier')
     
@@ -572,20 +695,37 @@ def display_comparison_results(lr_results, dt_results):
     lr_score = lr_results['metrics']['Accuracy']
     dt_score = dt_results['metrics']['Accuracy']
     
-    if lr_score > dt_score:
-        winner = "Logistic Regression"
-        winner_score = lr_score
-    elif dt_score > lr_score:
-        winner = "Decision Tree"
-        winner_score = dt_score
+    if knn_results is not None:
+        knn_score = knn_results['metrics']['Accuracy']
+    
+        if lr_score > dt_score and lr_score > knn_score:
+            winner = "Logistic Regression"
+            winner_score = lr_score
+        elif dt_score > lr_score and dt_score > knn_score:
+            winner = "Decision Tree"
+            winner_score = dt_score
+        elif knn_score > lr_score and knn_score > dt_score:
+            winner = "K-Nearest Neighbors"
+            winner_score = knn_score
+        else:
+            winner = "Tie"
+            winner_score = lr_score  # All are equal
+    
     else:
-        winner = "Tie"
-        winner_score = lr_score
+        if lr_score > dt_score:
+            winner = "Logistic Regression"
+            winner_score = lr_score
+        elif dt_score > lr_score:
+            winner = "Decision Tree"
+            winner_score = dt_score
+        else:
+            winner = "Tie"
+            winner_score = lr_score
     
     if winner != "Tie":
-        st.success(f"{emoji} **Winner: {winner}** with accuracy of **{winner_score:.4f}** ({winner_score*100:.2f}%)")
+        st.success(f"🏆 **Winner: {winner}** with accuracy of **{winner_score:.4f}** ({winner_score*100:.2f}%)")
     else:
-        st.info(f"{emoji} **It's a Tie!** Both models achieved **{winner_score:.4f}** ({winner_score*100:.2f}%) accuracy")
+        st.info(f"🤝 **It's a Tie!** All models achieved **{winner_score:.4f}** ({winner_score*100:.2f}%) accuracy")
     
     # Download comparison
     st.header("Download Comparison Results")
@@ -608,7 +748,7 @@ def main():
         st.error("Failed to load dataset. Please try again.")
         return
     
-    st.success(f"Dataset loaded successfully from: `{path}`")
+    st.success("Dataset loaded successfully")
     
     # Dataset Overview
     st.header("Dataset Overview")
@@ -642,7 +782,7 @@ def main():
     st.markdown("---")
     
     # Train model button
-    button_text = f"Train {model_choice}" if model_choice != "Compare Both Models" else "Train Both Models"
+    button_text = f"Train {model_choice}" if model_choice != "Compare All Models" else "Train All Models"
     
     if st.button(button_text, type="primary", use_container_width=True):
         
@@ -656,12 +796,18 @@ def main():
                 results = train_decision_tree(df, test_size, random_state, max_depth, min_samples_split)
             display_single_model_results(results)
         
-        else:  # Compare Both Models
-            with st.spinner("Training both models... Please wait."):
+        elif model_choice == "K-Nearest Neighbors":
+            with st.spinner("Training K-Nearest Neighbors model..."):
+                results = train_knn(df, test_size, random_state, n_neighbors, weights)
+            display_single_model_results(results)
+        
+        else:  # Compare All Models
+            with st.spinner("Training all models... Please wait."):
                 lr_results = train_logistic_regression(df, test_size, random_state, max_iter)
                 dt_results = train_decision_tree(df, test_size, random_state, max_depth, min_samples_split)
+                knn_results = train_knn(df, test_size, random_state, n_neighbors, weights)
             
-            display_comparison_results(lr_results, dt_results)
+            display_comparison_results(lr_results, dt_results, knn_results)
 
 if __name__ == "__main__":
     main()
