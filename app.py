@@ -57,6 +57,22 @@ st.markdown("---")
 
 # Sidebar
 with st.sidebar:
+    st.header("Dataset Source")
+    data_source = st.radio(
+        "Choose Data Source",
+        ["Default Dataset (Kaggle)", "Upload CSV File"],
+        help="Upload your own CSV file or use the default mushroom dataset"
+    )
+    
+    uploaded_file = None
+    if data_source == "Upload CSV File":
+        uploaded_file = st.file_uploader(
+            "Upload CSV File",
+            type=['csv'],
+            help="Upload a CSV file with the same structure as the mushroom dataset. First column should be the target variable."
+        )
+    
+    st.markdown("---")
     st.header("Model Selection")
     model_choice = st.selectbox(
         "Choose Classification Model",
@@ -112,6 +128,16 @@ def load_dataset():
         return df, path
     else:
         return None, None
+
+@st.cache_data
+def load_uploaded_file(uploaded_file):
+    """Load CSV file uploaded by user"""
+    try:
+        df = pd.read_csv(uploaded_file)
+        return df
+    except Exception as e:
+        st.error(f"Error loading file: {str(e)}")
+        return None
 
 # Train model function
 @st.cache_data
@@ -453,7 +479,7 @@ def display_single_model_results(results):
     # st.header("📄 Detailed Classification Report")
     # report_df = pd.DataFrame(results['report']).transpose()
     # st.dataframe(report_df.style.highlight_max(axis=0, color='lightgreen'), 
-    #             use_container_width=True)
+    #             width=True)
     
     # st.markdown("---")
     
@@ -524,7 +550,7 @@ def display_single_model_results(results):
         data=csv,
         file_name=f"mushroom_{results['model_name'].lower().replace(' ', '_')}_metrics.csv",
         mime="text/csv",
-        use_container_width=True
+        width=True
     )
 
 def display_comparison_results(lr_results, dt_results, knn_results=None):
@@ -741,14 +767,38 @@ def display_comparison_results(lr_results, dt_results, knn_results=None):
 
 # Main app
 def main():
-    # Load dataset
-    df, path = load_dataset()
+    # Load dataset based on source
+    df = None
     
-    if df is None:
-        st.error("Failed to load dataset. Please try again.")
-        return
-    
-    st.success("Dataset loaded successfully")
+    if data_source == "Upload CSV File":
+        if uploaded_file is not None:
+            with st.spinner("Loading uploaded CSV file..."):
+                df = load_uploaded_file(uploaded_file)
+            
+            if df is not None:
+                st.success("CSV file uploaded and loaded successfully!")
+            else:
+                st.warning("Please upload a valid CSV file to proceed.")
+                return
+        else:
+            st.info("👆 Please upload a CSV file from the sidebar to get started.")
+            st.markdown("""
+            ### Expected CSV Format:
+            - First column: Target variable (class labels)
+            - Remaining columns: Features
+            - All columns should contain categorical or numerical data
+            - Example: Mushroom dataset has 23 columns (1 target + 22 features)
+            """)
+            return
+    else:
+        # Load default dataset
+        df, path = load_dataset()
+        
+        if df is None:
+            st.error("Failed to load dataset. Please try again.")
+            return
+        
+        st.success("Dataset loaded successfully")
     
     # Dataset Overview
     st.header("Dataset Overview")
@@ -765,7 +815,7 @@ def main():
     
     # Show dataset preview
     with st.expander("View Dataset Preview"):
-        st.dataframe(df.head(10), use_container_width=True)
+        st.dataframe(df.head(10), width=True)
     
     # Class distribution
     with st.expander("Class Distribution"):
