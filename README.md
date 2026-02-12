@@ -41,4 +41,9 @@ To classify mushrooms as either edible or poisonous based on their physical char
 | **XGBoost (Ensemble)** | Perfect performance with 100% accuracy across all metrics. State-of-the-art gradient boosting achieves flawless classification. Built-in regularization ensures generalization. Recommended for production deployment due to best-in-class performance and robustness. |
 
 ## Screenshots
-![Mushroom Classification App](images/Screenshot%202026-02-12%20at%207.29.26%20AM.png)
+![Mushroom Classification App - Screenshot 1](images/Screenshot%202026-02-12%20at%207.29.26%20AM.png)
+
+![Mushroom Classification App - Screenshot 2](images/Screenshot%202026-02-12%20at%208.43.56%20AM.png)
+
+![Mushroom Classification App - Screenshot 3](images/Screenshot%202026-02-12%20at%208.46.21%20AM.png)
+
