@@ -129,17 +129,17 @@ def save_models(models, label_encoders, feature_columns):
         filename = f'saved_models/{model_name}.pkl'
         with open(filename, 'wb') as f:
             pickle.dump(model, f)
-        print(f"✓ Saved: {filename}")
+        print(f"Saved: {filename}")
     
     # Save label encoders
     with open('saved_models/label_encoders.pkl', 'wb') as f:
         pickle.dump(label_encoders, f)
-    print(f"✓ Saved: saved_models/label_encoders.pkl")
+    print(f"Saved: saved_models/label_encoders.pkl")
     
     # Save feature columns order
     with open('saved_models/feature_columns.pkl', 'wb') as f:
         pickle.dump(feature_columns, f)
-    print(f"✓ Saved: saved_models/feature_columns.pkl")
+    print(f"Saved: saved_models/feature_columns.pkl")
 
 def main():
     print("="*70)

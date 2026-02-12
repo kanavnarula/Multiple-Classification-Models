@@ -72,12 +72,12 @@ def create_train_test_csv():
     print("\n" + "="*70)
     print("SUMMARY")
     print("="*70)
-    print(f"\n📁 Files created in current directory:")
+    print(f"\n Files created in current directory:")
     print(f"   1. train.csv              - {train_df.shape[0]} samples (with labels)")
     print(f"   2. test.csv               - {test_df.shape[0]} samples (with labels)")
     print(f"   3. test_without_labels.csv - {test_df.shape[0]} samples (no labels)")
     
-    print(f"\n📊 File details:")
+    print(f"\n File details:")
     print(f"   train.csv:")
     print(f"     - Use for: Training models")
     print(f"     - Columns: {train_df.shape[1]} (including target)")
@@ -100,7 +100,7 @@ def create_train_test_csv():
     print("✓ Files created successfully!")
     print("="*70)
     
-    print("\n💡 Next steps:")
+    print("\n Next steps:")
     print("   1. Train models:")
     print("      python train_models.py")
     print("\n   2. Test with prediction app:")

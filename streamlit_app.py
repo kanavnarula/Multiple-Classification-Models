@@ -59,7 +59,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # Title
-st.title("🍄 Mushroom Classification - Prediction System")
+st.title("Mushroom Classification - Prediction System")
 st.markdown("### Upload test data and get predictions from pre-trained models")
 st.markdown("---")
 
@@ -71,7 +71,7 @@ with st.sidebar:
     models = load_saved_models()
     
     if models is not None:
-        st.success(f"✅ Loaded {len(models)} pre-trained models")
+        st.success(f"Loaded {len(models)} pre-trained models")
         
         model_choice = st.selectbox(
             "Choose Model for Prediction",
@@ -83,7 +83,7 @@ with st.sidebar:
         st.stop()
     
     st.markdown("---")
-    st.header("📁 Upload Test Data")
+    st.header("Upload Test Data")
     uploaded_file = st.file_uploader(
         "Upload Test CSV File",
         type=['csv'],
@@ -91,7 +91,7 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.header("ℹ️ About")
+    st.header("About")
     st.info("""
     **How to use:**
     1. Upload a test CSV file
@@ -106,7 +106,7 @@ with st.sidebar:
     """)
     
     st.markdown("---")
-    st.header("🔧 Model Info")
+    st.header("Model Info")
     if model_choice == "Logistic Regression":
         st.info("""
         **Logistic Regression**
@@ -132,7 +132,7 @@ with st.sidebar:
 
 def display_predictions(df, predictions, probabilities, label_encoders, model_name="model"):
     """Display prediction results in a nice format"""
-    st.header("🎯 Prediction Results")
+    st.header("Prediction Results")
     
     # Create results dataframe
     results_df = df.copy()
@@ -156,7 +156,7 @@ def display_predictions(df, predictions, probabilities, label_encoders, model_na
     st.markdown("---")
     
     # Show predictions table
-    st.subheader("📋 Detailed Predictions")
+    st.subheader("Detailed Predictions")
     
     # Add color coding
     def highlight_prediction(row):
@@ -173,7 +173,7 @@ def display_predictions(df, predictions, probabilities, label_encoders, model_na
     
     # Download predictions
     st.markdown("---")
-    st.subheader("💾 Download Predictions")
+    st.subheader("Download Predictions")
     csv = results_df.to_csv(index=False)
     
     # Generate unique key for download button
@@ -191,7 +191,7 @@ def display_predictions(df, predictions, probabilities, label_encoders, model_na
 
 def display_evaluation(metrics, cm, roc_data, model_name):
     """Display evaluation metrics"""
-    st.header("📊 Model Evaluation")
+    st.header("Model Evaluation")
     
     # Display metrics grid
     st.subheader("Performance Metrics")
@@ -232,7 +232,7 @@ def display_evaluation(metrics, cm, roc_data, model_name):
 def main():
     # Check if models are loaded
     if models is None:
-        st.error("❌ No models found. Please train models first by running: `python train_models.py`")
+        st.error("No models found. Please train models first by running: `python train_models.py`")
         return
     
     # Load encoders and feature columns
@@ -240,12 +240,12 @@ def main():
     feature_columns = load_feature_columns()
     
     if label_encoders is None or feature_columns is None:
-        st.error("❌ Missing model artifacts. Please run: `python train_models.py`")
+        st.error("Missing model artifacts. Please run: `python train_models.py`")
         return
     
     # File upload section
     if uploaded_file is None:
-        st.info("👆 Please upload a test CSV file from the sidebar to get started.")
+        st.info("Please upload a test CSV file from the sidebar to get started.")
         
         st.markdown("""
         ### 💡 Tips
@@ -261,20 +261,20 @@ def main():
     # Load test data
     try:
         df_test = pd.read_csv(uploaded_file)
-        st.success(f"✅ Test file loaded: {df_test.shape[0]} samples, {df_test.shape[1]} columns")
+        st.success(f"Test file loaded: {df_test.shape[0]} samples, {df_test.shape[1]} columns")
         
         # Show preview
-        with st.expander("📊 View Test Data Preview"):
+        with st.expander("View Test Data Preview"):
             st.dataframe(df_test.head(10), use_container_width=True)
         
     except Exception as e:
-        st.error(f"❌ Error loading file: {str(e)}")
+        st.error(f"Error loading file: {str(e)}")
         return
     
     st.markdown("---")
     
     # Predict button
-    if st.button("🚀 Predict", type="primary", use_container_width=True):
+    if st.button("Predict", type="primary", use_container_width=True):
         
         try:
             # Preprocess test data
@@ -298,7 +298,7 @@ def main():
             
             else:
                 # Compare all models
-                st.header("🔍 Comparing All Models")
+                st.header("Comparing All Models")
                 
                 all_predictions = {}
                 all_metrics = {}
@@ -315,7 +315,7 @@ def main():
                 
                 # Display comparison
                 if has_target and y_test is not None:
-                    st.subheader("📊 Model Performance Comparison")
+                    st.subheader("Model Performance Comparison")
                     
                     # Metrics comparison
                     comparison_df = pd.DataFrame({
@@ -328,9 +328,9 @@ def main():
                     # Find best model
                     best_model = comparison_df['Accuracy'].idxmax()
                     best_accuracy = comparison_df['Accuracy'].max()
-                    st.success(f"🏆 **Best Model: {best_model}** with accuracy of **{best_accuracy:.4f}**")
+                    st.success(f"**Best Model: {best_model}** with accuracy of **{best_accuracy:.4f}**")
                 else:
-                    st.warning("⚠️ Ground truth not available. Showing predictions only.")
+                    st.warning("Ground truth not available. Showing predictions only.")
                 
                 # Show predictions for each model
                 st.markdown("---")
@@ -339,7 +339,7 @@ def main():
                         display_predictions(df_test, predictions, probabilities, label_encoders, model_name)
         
         except Exception as e:
-            st.error(f"❌ Error during prediction: {str(e)}")
+            st.error(f"Error during prediction: {str(e)}")
             st.exception(e)
 
 

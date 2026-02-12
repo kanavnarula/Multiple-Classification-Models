@@ -33,7 +33,7 @@ def load_saved_models():
         
         return models
     except FileNotFoundError:
-        st.error("❌ Models not found! Please run 'python train_models.py' first.")
+        st.error("Models not found! Please run 'python train_models.py' first.")
         return None
 
 
@@ -44,7 +44,7 @@ def load_label_encoders():
         with open('saved_models/label_encoders.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
-        st.error("❌ Label encoders not found! Please run 'python train_models.py' first.")
+        st.error("Label encoders not found! Please run 'python train_models.py' first.")
         return None
 
 
@@ -55,7 +55,7 @@ def load_feature_columns():
         with open('saved_models/feature_columns.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
-        st.error("❌ Feature columns not found! Please run 'python train_models.py' first.")
+        st.error("Feature columns not found! Please run 'python train_models.py' first.")
         return None
 
 
