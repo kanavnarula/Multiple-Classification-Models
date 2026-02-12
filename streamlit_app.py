@@ -65,7 +65,7 @@ st.markdown("---")
 
 # Sidebar
 with st.sidebar:
-    st.header("🤖 Model Selection")
+    st.header("Model Selection")
     
     # Load models
     models = load_saved_models()
@@ -75,7 +75,7 @@ with st.sidebar:
         
         model_choice = st.selectbox(
             "Choose Model for Prediction",
-            ["Logistic Regression", "Decision Tree", "K-Nearest Neighbors", "Compare All Models"]
+            ["Logistic Regression", "Decision Tree", "K-Nearest Neighbors", "Naive Bayes", "Random Forest", "XGBoost", "Compare All Models"]
         )
     else:
         st.error("Please train models first!")
@@ -98,11 +98,6 @@ with st.sidebar:
     2. Select a model
     3. Click "Predict"
     4. View predictions and metrics
-    
-    **CSV Format:**
-    - Can include target column (for evaluation)
-    - Or just features (for prediction only)
-    - Same structure as training data
     """)
     
     st.markdown("---")
@@ -127,6 +122,30 @@ with st.sidebar:
         - Instance-based learning
         - No training phase
         - K=5, Uniform weights
+        """)
+    elif model_choice == "Naive Bayes":
+        st.info("""
+        **Naive Bayes (Gaussian)**
+        - Very fast predictions
+        - Probabilistic classifier
+        - Assumes feature independence
+        - Good for high-dimensional data
+        """)
+    elif model_choice == "Random Forest":
+        st.info("""
+        **Random Forest (Ensemble)**
+        - 100 decision trees
+        - High accuracy and robustness
+        - Feature importance ranking
+        - Resistant to overfitting
+        """)
+    elif model_choice == "XGBoost":
+        st.info("""
+        **XGBoost (Gradient Boosting)**
+        - State-of-the-art performance
+        - 100 boosted trees
+        - Optimized for speed
+        - Built-in regularization
         """)
 
 
@@ -204,7 +223,18 @@ def display_evaluation(metrics, cm, roc_data, model_name):
     
     with col1:
         st.subheader("Confusion Matrix")
-        color_map = 'Blues' if model_name == 'Logistic Regression' else ('Greens' if model_name == 'Decision Tree' else 'Purples')
+        if model_name == 'Logistic Regression':
+            color_map = 'Blues'
+        elif model_name == 'Decision Tree':
+            color_map = 'Greens'
+        elif model_name == 'K-Nearest Neighbors':
+            color_map = 'Purples'
+        elif model_name == 'Naive Bayes':
+            color_map = 'Oranges'
+        elif model_name == 'Random Forest':
+            color_map = 'Greens'
+        else:  # XGBoost
+            color_map = 'YlOrBr'
         fig = plot_confusion_matrix(cm, f'Confusion Matrix - {model_name}', color_map)
         st.pyplot(fig)
         
@@ -217,7 +247,18 @@ def display_evaluation(metrics, cm, roc_data, model_name):
     with col2:
         st.subheader("ROC Curve")
         fpr, tpr = roc_data
-        color = 'darkorange' if model_name == 'Logistic Regression' else ('green' if model_name == 'Decision Tree' else 'purple')
+        if model_name == 'Logistic Regression':
+            color = 'darkorange'
+        elif model_name == 'Decision Tree':
+            color = 'green'
+        elif model_name == 'K-Nearest Neighbors':
+            color = 'purple'
+        elif model_name == 'Naive Bayes':
+            color = 'coral'
+        elif model_name == 'Random Forest':
+            color = 'forestgreen'
+        else:  # XGBoost
+            color = 'darkorange'
         fig = plot_roc_curve(fpr, tpr, metrics['AUC Score'], f'ROC Curve - {model_name}', color)
         st.pyplot(fig)
     
@@ -248,7 +289,7 @@ def main():
         st.info("Please upload a test CSV file from the sidebar to get started.")
         
         st.markdown("""
-        ### 💡 Tips
+        ### Tips
         - Load Test Data in Upload Test Data section.
         - Choose Model for Prediction from the dropdown.
         - Click on Predict.
@@ -325,17 +366,22 @@ def main():
                     
                     st.dataframe(comparison_df.style.highlight_max(axis=0, color='lightgreen'), use_container_width=True)
                     
-                    # Find best model
-                    best_model = comparison_df['Accuracy'].idxmax()
+                    # Find best model(s) - handle ties
                     best_accuracy = comparison_df['Accuracy'].max()
-                    st.success(f"**Best Model: {best_model}** with accuracy of **{best_accuracy:.4f}**")
+                    best_models = comparison_df[comparison_df['Accuracy'] == best_accuracy].index.tolist()
+                    
+                    if len(best_models) == 1:
+                        st.success(f"**Best Model: {best_models[0]}** with accuracy of **{best_accuracy:.4f}**")
+                    else:
+                        best_models_str = ", ".join(best_models)
+                        st.success(f"**Best Models (Tie): {best_models_str}** with accuracy of **{best_accuracy:.4f}**")
                 else:
                     st.warning("Ground truth not available. Showing predictions only.")
                 
                 # Show predictions for each model
                 st.markdown("---")
                 for model_name, (predictions, probabilities) in all_predictions.items():
-                    with st.expander(f"📋 {model_name} Predictions"):
+                    with st.expander(f"{model_name} Predictions"):
                         display_predictions(df_test, predictions, probabilities, label_encoders, model_name)
         
         except Exception as e:
