@@ -1,7 +1,7 @@
 # Mushroom Classification - Multiple ML Models Comparison
 
 ## GitHub Repository
-[Add your GitHub repository link here]
+[https://github.com/kanavnarula/Multiple-Classification-Models]
 
 ## Streamlit App Link
 [Add your deployed Streamlit app link here]
@@ -33,12 +33,12 @@ To classify mushrooms as either edible or poisonous based on their physical char
 
 | ML Model Name | Observation about Model Performance |
 |---------------|-------------------------------------|
-| **Logistic Regression** |  |
-| **Decision Tree** |  |
-| **kNN** |  |
-| **Naive Bayes** |  |
-| **Random Forest (Ensemble)** |  |
-| **XGBoost (Ensemble)** |  |
+| **Logistic Regression** | Achieves strong baseline performance with 95.57% accuracy. Fast training and prediction. Despite being a linear model, delivers robust results with good precision (0.96) and recall (0.95). Best for scenarios requiring interpretability and speed. |
+| **Decision Tree** | Perfect performance with 100% accuracy across all metrics. The model successfully captures all decision rules from the mushroom features. Fully interpretable with clear decision paths. May be prone to overfitting on new unseen data despite perfect test performance. |
+| **kNN** | Excellent performance with 99.69% accuracy. Very close to perfect classification with precision of 0.99 and recall of 0.99. No training phase makes it flexible for updates. Slightly slower prediction time due to distance calculations. |
+| **Naive Bayes** | Lowest performance among all models with 92.86% accuracy. Despite the "naive" independence assumption, still achieves competitive results. Extremely fast training and prediction. The Gaussian variant works reasonably well but independence assumption limits performance on this dataset. |
+| **Random Forest (Ensemble)** | Perfect performance with 100% accuracy across all metrics. The ensemble of 100 decision trees provides superior generalization. Feature importance reveals key mushroom characteristics. Robust and reliable for production deployment. |
+| **XGBoost (Ensemble)** | Perfect performance with 100% accuracy across all metrics. State-of-the-art gradient boosting achieves flawless classification. Built-in regularization ensures generalization. Recommended for production deployment due to best-in-class performance and robustness. |
 
 ## Screenshots
 [Add screenshots here]
