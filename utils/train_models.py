@@ -11,6 +11,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 from sklearn.metrics import (
     accuracy_score, roc_auc_score, precision_score,
     recall_score, f1_score, matthews_corrcoef
@@ -51,7 +54,7 @@ def preprocess_data(df):
     return df_encoded, label_encoders
 
 def train_models(X_train, y_train, X_test, y_test):
-    """Train all three models"""
+    """Train all six models"""
     models = {}
     metrics = {}
     
@@ -75,7 +78,7 @@ def train_models(X_train, y_train, X_test, y_test):
         'MCC Score': matthews_corrcoef(y_test, y_pred_lr)
     }
     models['logistic_regression'] = lr_model
-    print(f"   ✓ Accuracy: {metrics['Logistic Regression']['Accuracy']:.4f}")
+    print(f"Accuracy: {metrics['Logistic Regression']['Accuracy']:.4f}")
     
     # 2. Decision Tree
     print("\n2. Training Decision Tree...")
@@ -93,7 +96,7 @@ def train_models(X_train, y_train, X_test, y_test):
         'MCC Score': matthews_corrcoef(y_test, y_pred_dt)
     }
     models['decision_tree'] = dt_model
-    print(f"   ✓ Accuracy: {metrics['Decision Tree']['Accuracy']:.4f}")
+    print(f"Accuracy: {metrics['Decision Tree']['Accuracy']:.4f}")
     
     # 3. K-Nearest Neighbors
     print("\n3. Training K-Nearest Neighbors...")
@@ -111,8 +114,76 @@ def train_models(X_train, y_train, X_test, y_test):
         'MCC Score': matthews_corrcoef(y_test, y_pred_knn)
     }
     models['knn'] = knn_model
-    print(f"   ✓ Accuracy: {metrics['K-Nearest Neighbors']['Accuracy']:.4f}")
+    print(f"Accuracy: {metrics['K-Nearest Neighbors']['Accuracy']:.4f}")
     
+    # 4. Naive Bayes
+    print("\n4. Training Naive Bayes (Gaussian)...")
+    nb_model = GaussianNB()
+    nb_model.fit(X_train, y_train)
+    y_pred_nb = nb_model.predict(X_test)
+    y_pred_proba_nb = nb_model.predict_proba(X_test)[:, 1]
+    
+    metrics['Naive Bayes'] = {
+        'Accuracy': accuracy_score(y_test, y_pred_nb),
+        'AUC Score': roc_auc_score(y_test, y_pred_proba_nb),
+        'Precision': precision_score(y_test, y_pred_nb),
+        'Recall': recall_score(y_test, y_pred_nb),
+        'F1 Score': f1_score(y_test, y_pred_nb),
+        'MCC Score': matthews_corrcoef(y_test, y_pred_nb)
+    }
+    models['naive_bayes'] = nb_model
+    print(f"Accuracy: {metrics['Naive Bayes']['Accuracy']:.4f}")
+    
+    # 5. Random Forest
+    print("\n5. Training Random Forest...")
+    rf_model = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=10,
+        min_samples_split=5,
+        random_state=42,
+        n_jobs=-1
+    )
+    rf_model.fit(X_train, y_train)
+    y_pred_rf = rf_model.predict(X_test)
+    y_pred_proba_rf = rf_model.predict_proba(X_test)[:, 1]
+    
+    metrics['Random Forest'] = {
+        'Accuracy': accuracy_score(y_test, y_pred_rf),
+        'AUC Score': roc_auc_score(y_test, y_pred_proba_rf),
+        'Precision': precision_score(y_test, y_pred_rf),
+        'Recall': recall_score(y_test, y_pred_rf),
+        'F1 Score': f1_score(y_test, y_pred_rf),
+        'MCC Score': matthews_corrcoef(y_test, y_pred_rf)
+    }
+    models['random_forest'] = rf_model
+    print(f"Accuracy: {metrics['Random Forest']['Accuracy']:.4f}")
+    
+    # 6. XGBoost
+    print("\n6. Training XGBoost...")
+    xgb_model = XGBClassifier(
+        n_estimators=100,
+        max_depth=6,
+        learning_rate=0.1,
+        random_state=42,
+        use_label_encoder=False,
+        eval_metric='logloss',
+        n_jobs=-1
+    )
+    xgb_model.fit(X_train, y_train)
+    y_pred_xgb = xgb_model.predict(X_test)
+    y_pred_proba_xgb = xgb_model.predict_proba(X_test)[:, 1]
+    
+    metrics['XGBoost'] = {
+        'Accuracy': accuracy_score(y_test, y_pred_xgb),
+        'AUC Score': roc_auc_score(y_test, y_pred_proba_xgb),
+        'Precision': precision_score(y_test, y_pred_xgb),
+        'Recall': recall_score(y_test, y_pred_xgb),
+        'F1 Score': f1_score(y_test, y_pred_xgb),
+        'MCC Score': matthews_corrcoef(y_test, y_pred_xgb)
+    }
+    models['xgboost'] = xgb_model
+    print(f"Accuracy: {metrics['XGBoost']['Accuracy']:.4f}")
+
     return models, metrics
 
 def save_models(models, label_encoders, feature_columns):

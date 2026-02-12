@@ -31,9 +31,21 @@ def load_saved_models():
         with open('saved_models/knn.pkl', 'rb') as f:
             models['K-Nearest Neighbors'] = pickle.load(f)
         
+        # Load Naive Bayes
+        with open('saved_models/naive_bayes.pkl', 'rb') as f:
+            models['Naive Bayes'] = pickle.load(f)
+        
+        # Load Random Forest
+        with open('saved_models/random_forest.pkl', 'rb') as f:
+            models['Random Forest'] = pickle.load(f)
+        
+        # Load XGBoost
+        with open('saved_models/xgboost.pkl', 'rb') as f:
+            models['XGBoost'] = pickle.load(f)
+        
         return models
-    except FileNotFoundError:
-        st.error("Models not found! Please run 'python train_models.py' first.")
+    except FileNotFoundError as e:
+        st.error(f"Models not found! Please run 'python utils/train_models.py' first. Error: {e}")
         return None
 
 
