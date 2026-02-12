@@ -1,10 +1,10 @@
 # Mushroom Classification - Multiple ML Models Comparison
 
 ## GitHub Repository
-[https://github.com/kanavnarula/Multiple-Classification-Models]
+https://github.com/kanavnarula/Multiple-Classification-Models
 
 ## Streamlit App Link
-[Add your deployed Streamlit app link here]
+https://multiple-classification-models-ngvtng3wgo6eaqhd9zwjpg.streamlit.app/
 
 ## Problem Statement
 To classify mushrooms as either edible or poisonous based on their physical characteristics using multiple machine learning algorithms and compare their performance.
